@@ -18,6 +18,21 @@ pyheif = "^0.8.0"
 efficientnet-pytorch = "^0.7.1"
 
 
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^3.8.0"
+black = "^24.8.0"
+mypy = "^1.11.2"
+isort = "^5.13.2"
+flake8 = "^7.1.1"
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

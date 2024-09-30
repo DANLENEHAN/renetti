@@ -7,7 +7,7 @@ from sklearn.model_selection import StratifiedKFold
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models, transforms
 
-from renetti.utils import open_image
+from renetti.ml.utils import open_image
 
 
 class CustomDataset(Dataset):

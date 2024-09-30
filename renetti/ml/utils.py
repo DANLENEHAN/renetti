@@ -4,7 +4,7 @@ from typing import Dict, List
 import pyheif
 from PIL import Image, UnidentifiedImageError
 
-from renetti.classes import (
+from renetti.ml.classes import (
     EquipmentClassificationData,
     ImageClassificationData,
     ImageClassificationDataSet,

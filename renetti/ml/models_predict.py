@@ -2,8 +2,8 @@ import glob
 import os
 import warnings
 
-from renetti.models.resnet18 import Resnet18Model
-from renetti.utils import get_equipment_image_categories
+from renetti.ml.models.resnet18 import Resnet18Model
+from renetti.ml.utils import get_equipment_image_categories
 
 warnings.filterwarnings("ignore")
 

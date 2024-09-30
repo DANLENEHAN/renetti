@@ -16,6 +16,10 @@ matplotlib = "^3.9.2"
 scikit-learn = "^1.5.2"
 pyheif = "^0.8.0"
 efficientnet-pytorch = "^0.7.1"
+duckduckgo-search = "^6.2.13"
+selenium = "^4.25.0"
+beautifulsoup4 = "^4.12.3"
+types-requests = "^2.32.0.20240914"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -24,6 +28,8 @@ black = "^24.8.0"
 mypy = "^1.11.2"
 isort = "^5.13.2"
 flake8 = "^7.1.1"
+notebook = "^7.2.2"
+types-requests = "^2.32.0.20240914"
 
 [tool.black]
 line-length = 100

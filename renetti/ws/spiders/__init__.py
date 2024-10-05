@@ -2,6 +2,7 @@ import asyncio
 import json
 from typing import Callable, Dict, List, Optional, TypedDict
 
+import aiohttp
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
@@ -30,7 +31,7 @@ class ListingUrlParsersMapper(TypedDict):
 
 class Spider:
     name: str
-    file_path: str = "../../files"
+    file_path: str = "files"
     listing_url_parser_mapper: Dict[str, ListingUrlParsersMapper]
     listing_url_content_links: Dict[str, List[str]]
     listing_url_content_data: List[ScrapedEquipment]
@@ -48,7 +49,7 @@ class Spider:
         self.file_path = overwrite_file_path or self.file_path
         return
 
-    async def gather_content_links(self) -> Dict[str, List[str]]:
+    async def _gather_content_links(self) -> Dict[str, List[str]]:
         print(f"(Scraper):({self.name}) - gathering content links")
         listing_url_content_links = {
             listing_url: asyncio.create_task(parsers["content_url_parser"](url=listing_url))
@@ -56,7 +57,9 @@ class Spider:
         }
         return {u: await task for u, task in listing_url_content_links.items()}
 
-    def scrape_content_url(self, listing_url: str, content_url: str) -> asyncio.Task:
+    def _scrape_content_link(
+        self, listing_url: str, content_url: str, session: aiohttp.ClientSession
+    ) -> asyncio.Task:
         print(
             f"(Scraper):({self.name}) - scraping content link "
             f"'{content_url}' from listing '{listing_url}'"
@@ -67,21 +70,27 @@ class Spider:
                 f"(Scraper):({(self.name)}) - "
                 f"has not implemented parser for listing_url '{listing_url}'"
             )
-        return asyncio.create_task(parser_functions["content_page_parser"](url=content_url))
+        return asyncio.create_task(
+            parser_functions["content_page_parser"](url=content_url, session=session)
+        )
 
-    async def scrape_content_links(self):
+    async def _scrape_all_content_links(self):
         print(f"(Scraper):({(self.name)}) - beginning content scraping")
         scrape_tasks = []
-        for listing_url, content_urls in self.listing_url_content_links.items():
-            for content_url in content_urls[:10]:
-                scrape_tasks.append(
-                    self.scrape_content_url(listing_url=listing_url, content_url=content_url)
-                )
-        return await asyncio.gather(*scrape_tasks, return_exceptions=True)
+        async with aiohttp.ClientSession() as session:
+            for listing_url, content_urls in self.listing_url_content_links.items():
+                for content_url in content_urls:
+                    print(content_url)
+                    scrape_tasks.append(
+                        self._scrape_content_link(
+                            listing_url=listing_url, content_url=content_url, session=session
+                        )
+                    )
+            return await asyncio.gather(*scrape_tasks)
 
-    def save_crawled_data(self):
+    def _save_crawled_data(self):
         if self.listing_url_content_data:
-            with open(f"{self.name}_crawled_data.json", "w") as f:
+            with open(f"{self.file_path}/{self.name}_crawled_data.json", "w") as f:
                 print(f"(Scraper):({(self.name)}) - saving scraped data")
                 f.write(json.dumps(self.listing_url_content_data, indent=3))
                 exit(0)
@@ -90,9 +99,9 @@ class Spider:
             exit(1)
 
     async def crawl_website(self):
-        self.listing_url_content_links = await self.gather_content_links()
-        self.listing_url_content_data = await self.scrape_content_links()
-        self.save_crawled_data()
+        self.listing_url_content_links = await self._gather_content_links()
+        self.listing_url_content_data = await self._scrape_all_content_links()
+        self._save_crawled_data()
 
 
 class GymEquipmentSpider(Spider):
@@ -119,18 +128,12 @@ class GymEquipmentSpider(Spider):
             await browser.close()
             return [a.get("href") for a in a_elements]
 
-    async def content_page_parser_all(self, url: str) -> ScrapedEquipment:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=True)
-            page = await browser.new_page()
-            await page.goto(url)
-
-            # Wait for the necessary element to load
-            await page.wait_for_selector(".product.media")
-
-            html_source = await page.content()
-            soup = BeautifulSoup(html_source, "html.parser")
-
+    async def content_page_parser_all(
+        self, url: str, session: aiohttp.ClientSession
+    ) -> ScrapedEquipment:
+        async with session.get(url) as response:
+            raw_html = await response.text()
+            soup = BeautifulSoup(raw_html, "html.parser")
             equipment_title = soup.find("span", class_="base")
             equipment_description = soup.find("div", id="product.info.description")
             equipment_image = soup.find(
@@ -179,5 +182,4 @@ class GymEquipmentSpider(Spider):
                         scraped_equipment["specification"]["length"] = td.text
                     elif "Width" in tr.text:
                         scraped_equipment["specification"]["width"] = td.text
-            await browser.close()
         return scraped_equipment

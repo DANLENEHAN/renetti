@@ -17,9 +17,9 @@ scikit-learn = "^1.5.2"
 pyheif = "^0.8.0"
 efficientnet-pytorch = "^0.7.1"
 duckduckgo-search = "^6.2.13"
-selenium = "^4.25.0"
 beautifulsoup4 = "^4.12.3"
 types-requests = "^2.32.0.20240914"
+playwright = "^1.47.0"
 
 
 [tool.poetry.group.dev.dependencies]

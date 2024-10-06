@@ -58,13 +58,13 @@ class GymEquipmentSpider(Spider):
                 name=equipment_title.text if equipment_title else None,
                 description=(equipment_description.text if equipment_description else None),
                 image_link=equipment_image_link,
-                category=None,
                 brand=None,
                 specification=EquipmentSpecification(
                     weight=None,
                     height=None,
                     length=None,
                     width=None,
+                    weight_stack=None,
                 ),
                 sku=None,
             )

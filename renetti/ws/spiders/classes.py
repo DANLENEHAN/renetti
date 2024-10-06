@@ -19,12 +19,14 @@ class Spider:
         name: str,
         listing_url_parser_mapper: Dict[str, ListingUrlParsersMapper],
         overwrite_file_path: Optional[str] = None,
+        request_batch_limit: Optional[int] = 100,
     ):
         self.name = name
         self.listing_url_parser_mapper = listing_url_parser_mapper
         self.listing_url_content_links = {}
         self.listing_url_content_data = []
         self.file_path = overwrite_file_path or self.file_path
+        self.request_batch_limit = request_batch_limit
         return
 
     async def _gather_content_links(self) -> Dict[str, List[str]]:
@@ -38,10 +40,6 @@ class Spider:
     def _scrape_content_link(
         self, listing_url: str, content_url: str, session: aiohttp.ClientSession
     ) -> asyncio.Task:
-        print(
-            f"(Scraper):({self.name}) - scraping content link "
-            f"'{content_url}' from listing '{listing_url}'"
-        )
         parser_functions = self.listing_url_parser_mapper.get(listing_url)
         if parser_functions is None:
             raise NotImplementedError(
@@ -54,17 +52,26 @@ class Spider:
 
     async def _scrape_all_content_links(self):
         print(f"(Scraper):({(self.name)}) - beginning content scraping")
-        scrape_tasks = []
+        scraped_data = []
         async with aiohttp.ClientSession() as session:
+            scrape_tasks = []
             for listing_url, content_urls in self.listing_url_content_links.items():
+                requests_sent = 0
                 for content_url in content_urls:
-                    print(content_url)
+                    print(requests_sent, content_url)
                     scrape_tasks.append(
                         self._scrape_content_link(
                             listing_url=listing_url, content_url=content_url, session=session
                         )
                     )
-            return await asyncio.gather(*scrape_tasks)
+                    requests_sent += 1
+                    if requests_sent == self.request_batch_limit:
+                        requests_sent = 0
+                        scraped_data += await asyncio.gather(*scrape_tasks)
+                        scrape_tasks = []
+            if scrape_tasks:
+                scraped_data += await asyncio.gather(*scrape_tasks)
+        return scraped_data
 
     def _save_crawled_data(self):
         if self.listing_url_content_data:

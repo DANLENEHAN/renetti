@@ -1,4 +1,4 @@
-from typing import Callable, Optional, TypedDict
+from typing import Callable, List, Optional, TypedDict
 
 
 class EquipmentSpecification(TypedDict):
@@ -6,12 +6,12 @@ class EquipmentSpecification(TypedDict):
     height: Optional[str]
     width: Optional[str]
     length: Optional[str]
+    weight_stack: Optional[str]
 
 
 class ScrapedEquipment(TypedDict):
-    category: Optional[str]
     name: str
-    image_link: str
+    image_link: List[str]
     brand: Optional[str]
     description: Optional[str]
     specification: EquipmentSpecification

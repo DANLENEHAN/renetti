@@ -4,7 +4,7 @@ import os
 from typing import Dict, List, Optional, Tuple, Union
 
 import aiohttp
-from playwright.async_api import Page, async_playwright
+from playwright.async_api import Browser, async_playwright
 
 from renetti.ws.spiders.types import ListingUrlParsersMapper, RequestMethod, ScrapedEquipment
 
@@ -33,6 +33,7 @@ class Spider:
         self.request_batch_limit = request_batch_limit
         self.listing_group_parser_map = listing_group_parser_map
         self.content_request_method = content_request_method
+        self.scraped_data = []
         self._setup_spider()
         return
 
@@ -66,7 +67,7 @@ class Spider:
         listing_url: str,
         content_url: str,
         session: aiohttp.ClientSession,
-        page: Page,
+        browser: Browser,
     ) -> asyncio.Task:
         parser_functions = self.listing_group_parser_map.get(listing_url)
         if parser_functions is None:
@@ -78,7 +79,7 @@ class Spider:
             parser_functions["content_page_parser"](
                 url=content_url,
                 session=session,
-                page=page,
+                browser=browser,
             )
         )
 
@@ -95,7 +96,7 @@ class Spider:
         return scraped_data, scraped_content_urls
 
     async def _scrape_content_urls(
-        self, session: Optional[aiohttp.ClientSession], page: Optional[Page]
+        self, session: Optional[aiohttp.ClientSession], browser: Optional[Browser]
     ):
         scrape_tasks = []
         scraped_urls = []
@@ -108,7 +109,7 @@ class Spider:
                             listing_url=listing_url,
                             content_url=content_url,
                             session=session,
-                            page=page,
+                            browser=browser,
                         )
                     )
                     scraped_urls.append(content_url)
@@ -140,15 +141,14 @@ class Spider:
             async with aiohttp.ClientSession() as session:
                 scraped_data = await self._scrape_content_urls(
                     session=session,
-                    page=None,
+                    browser=None,
                 )
         elif self.content_request_method == RequestMethod.PLAYWRIGHT:
             async with async_playwright() as playwright:
-                browser = await playwright.chromium.launch(headless=True)
-                page = await browser.new_page()
-                scraped_data = self._scrape_content_urls(
+                browser = await playwright.chromium.launch(headless=False)
+                scraped_data = await self._scrape_content_urls(
                     session=None,
-                    page=page,
+                    browser=browser,
                 )
         return scraped_data
 

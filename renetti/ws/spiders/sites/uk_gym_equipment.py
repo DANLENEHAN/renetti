@@ -15,7 +15,7 @@ from renetti.ws.spiders.types import (
 
 class UkGymEquipmentSpider(Spider):
     def __init__(self, request_batch_limit: Optional[int] = None):
-        listing_url_parser_mapper = {
+        listing_group_parser_map = {
             "https://www.ukgymequipment.com/cardio-machines-c11": ListingUrlParsersMapper(
                 content_url_parser=self.content_url_parser_all,
                 content_page_parser=self.content_page_parser_all,
@@ -35,8 +35,8 @@ class UkGymEquipmentSpider(Spider):
         }
 
         super().__init__(
-            name="https://www.ukgymequipment.com",
-            listing_url_parser_mapper=listing_url_parser_mapper,
+            name="ukgymequipment",
+            listing_group_parser_map=listing_group_parser_map,
             request_batch_limit=request_batch_limit,
         )
 

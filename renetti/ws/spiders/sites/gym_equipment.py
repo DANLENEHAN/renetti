@@ -10,15 +10,13 @@ from renetti.ws.spiders.types import EquipmentSpecification, ScrapedEquipment
 
 class GymEquipmentSpider(Spider):
     def __init__(self):
-        listing_url_parser_mapper = {
+        listing_group_parser_map = {
             "https://gymequipment.co.uk/strength-conditioning?product_list_limit=all": {
                 "content_url_parser": self.content_url_parser_all,
                 "content_page_parser": self.content_page_parser_all,
             }
         }
-        super().__init__(
-            name="gymequipment.co.uk", listing_url_parser_mapper=listing_url_parser_mapper
-        )
+        super().__init__(name="gymequipment", listing_group_parser_map=listing_group_parser_map)
 
     async def content_url_parser_all(self, url: str) -> List[str]:
         async with async_playwright() as playwright:

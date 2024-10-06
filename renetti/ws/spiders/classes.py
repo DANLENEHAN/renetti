@@ -75,6 +75,7 @@ class Spider:
         scraped_data = []
         async with aiohttp.ClientSession() as session:
             scrape_tasks = []
+            scraped_urls = []
             for listing_url, listing_group_content_urls in self.listing_group_content_urls.items():
                 requests_sent = 0
                 for content_url in listing_group_content_urls:
@@ -84,17 +85,23 @@ class Spider:
                                 listing_url=listing_url, content_url=content_url, session=session
                             )
                         )
+                        scraped_urls.append(content_url)
                         requests_sent += 1
                         if requests_sent == self.request_batch_limit:
                             requests_sent = 0
                             results = await asyncio.gather(*scrape_tasks, return_exceptions=True)
-                            for result in results:
+                            for index, result in enumerate(results):
                                 if not isinstance(result, Exception):
                                     scraped_data.append(result)
-                                    self.scraped_content_urls.append(content_url)
+                                    self.scraped_content_urls.append(scraped_urls[index])
                             scrape_tasks = []
+                            scraped_urls = []
             if scrape_tasks:
-                scraped_data += await asyncio.gather(*scrape_tasks)
+                results = await asyncio.gather(*scrape_tasks, return_exceptions=True)
+                for index, result in enumerate(results):
+                    if not isinstance(result, Exception):
+                        scraped_data.append(result)
+                        self.scraped_content_urls.append(scraped_urls[index])
 
             with open(f"{self.file_path}/scraped_content_urls.json", "w") as f:
                 json.dump(self.scraped_content_urls, f, indent=3)

@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
 from renetti.ws.spiders.classes import Spider
-from renetti.ws.spiders.types import EquipmentSpecification, ScrapedEquipment
+from renetti.ws.spiders.types import EquipmentSpecification, RequestMethod, ScrapedEquipment
 
 
 class GymEquipmentSpider(Spider):
@@ -14,9 +14,14 @@ class GymEquipmentSpider(Spider):
             "https://gymequipment.co.uk/strength-conditioning?product_list_limit=all": {
                 "content_url_parser": self.content_url_parser_all,
                 "content_page_parser": self.content_page_parser_all,
+                "content_page_method": RequestMethod.AIOHTTP,
             }
         }
-        super().__init__(name="gymequipment", listing_group_parser_map=listing_group_parser_map)
+        super().__init__(
+            name="gymequipment",
+            listing_group_parser_map=listing_group_parser_map,
+            content_request_method=RequestMethod.AIOHTTP,
+        )
 
     async def content_url_parser_all(self, url: str) -> List[str]:
         async with async_playwright() as playwright:
@@ -31,7 +36,7 @@ class GymEquipmentSpider(Spider):
             return [a.get("href") for a in a_elements]
 
     async def content_page_parser_all(
-        self, url: str, session: aiohttp.ClientSession
+        self, url: str, session: aiohttp.ClientSession, *args, **kwargs
     ) -> ScrapedEquipment:
         async with session.get(url) as response:
             raw_html = await response.text()

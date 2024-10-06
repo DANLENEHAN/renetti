@@ -1,4 +1,10 @@
+from enum import Enum
 from typing import Callable, List, Optional, TypedDict
+
+
+class RequestMethod(Enum):
+    PLAYWRIGHT = "playwright"
+    AIOHTTP = "aiohttp"
 
 
 class EquipmentSpecification(TypedDict):

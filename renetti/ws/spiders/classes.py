@@ -1,11 +1,12 @@
 import asyncio
 import json
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 import aiohttp
+from playwright.async_api import Page, async_playwright
 
-from renetti.ws.spiders.types import ListingUrlParsersMapper, ScrapedEquipment
+from renetti.ws.spiders.types import ListingUrlParsersMapper, RequestMethod, ScrapedEquipment
 
 
 class Spider:
@@ -17,11 +18,13 @@ class Spider:
     listing_group_content_urls: Dict[str, List[str]]
     scraped_content_urls: List[str]
     scraped_data: List[ScrapedEquipment]
+    content_request_method: RequestMethod
 
     def __init__(
         self,
         name: str,
         listing_group_parser_map: Dict[str, ListingUrlParsersMapper],
+        content_request_method: RequestMethod,
         overwrite_base_file_path: Optional[str] = None,
         request_batch_limit: Optional[int] = 100,
     ):
@@ -29,6 +32,7 @@ class Spider:
         self.base_file_path = overwrite_base_file_path or self.base_file_path
         self.request_batch_limit = request_batch_limit
         self.listing_group_parser_map = listing_group_parser_map
+        self.content_request_method = content_request_method
         self._setup_spider()
         return
 
@@ -58,7 +62,11 @@ class Spider:
         return {u: await task for u, task in listing_group_content_urls.items()}
 
     def _scrape_content_link(
-        self, listing_url: str, content_url: str, session: aiohttp.ClientSession
+        self,
+        listing_url: str,
+        content_url: str,
+        session: aiohttp.ClientSession,
+        page: Page,
     ) -> asyncio.Task:
         parser_functions = self.listing_group_parser_map.get(listing_url)
         if parser_functions is None:
@@ -67,45 +75,81 @@ class Spider:
                 f"has not implemented parser for listing_url '{listing_url}'"
             )
         return asyncio.create_task(
-            parser_functions["content_page_parser"](url=content_url, session=session)
+            parser_functions["content_page_parser"](
+                url=content_url,
+                session=session,
+                page=page,
+            )
         )
 
-    async def _scrape_content_urls(self):
-        print(f"(Scraper):({(self.name)}) - beginning content scraping")
+    async def _retrive_and_parse_results(
+        self, tasks: List[asyncio.Task], scraped_urls: List[str]
+    ) -> Tuple[List[Union[ScrapedEquipment]], List[str]]:
         scraped_data = []
-        async with aiohttp.ClientSession() as session:
-            scrape_tasks = []
-            scraped_urls = []
-            for listing_url, listing_group_content_urls in self.listing_group_content_urls.items():
-                requests_sent = 0
-                for content_url in listing_group_content_urls:
-                    if content_url not in self.scraped_content_urls:
-                        scrape_tasks.append(
-                            self._scrape_content_link(
-                                listing_url=listing_url, content_url=content_url, session=session
-                            )
-                        )
-                        scraped_urls.append(content_url)
-                        requests_sent += 1
-                        if requests_sent == self.request_batch_limit:
-                            requests_sent = 0
-                            results = await asyncio.gather(*scrape_tasks, return_exceptions=True)
-                            for index, result in enumerate(results):
-                                if not isinstance(result, Exception):
-                                    scraped_data.append(result)
-                                    self.scraped_content_urls.append(scraped_urls[index])
-                            scrape_tasks = []
-                            scraped_urls = []
-            if scrape_tasks:
-                results = await asyncio.gather(*scrape_tasks, return_exceptions=True)
-                for index, result in enumerate(results):
-                    if not isinstance(result, Exception):
-                        scraped_data.append(result)
-                        self.scraped_content_urls.append(scraped_urls[index])
+        scraped_content_urls = []
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for index, result in enumerate(results):
+            if not isinstance(result, BaseException):
+                scraped_data.append(result)
+                scraped_content_urls.append(scraped_urls[index])
+        return scraped_data, scraped_content_urls
 
-            with open(f"{self.file_path}/scraped_content_urls.json", "w") as f:
-                json.dump(self.scraped_content_urls, f, indent=3)
-            self.scraped_content_urls = []
+    async def _scrape_content_urls(
+        self, session: Optional[aiohttp.ClientSession], page: Optional[Page]
+    ):
+        scrape_tasks = []
+        scraped_urls = []
+        for listing_url, listing_group_content_urls in self.listing_group_content_urls.items():
+            requests_sent = 0
+            for content_url in listing_group_content_urls:
+                if content_url not in self.scraped_content_urls:
+                    scrape_tasks.append(
+                        self._scrape_content_link(
+                            listing_url=listing_url,
+                            content_url=content_url,
+                            session=session,
+                            page=page,
+                        )
+                    )
+                    scraped_urls.append(content_url)
+                    requests_sent += 1
+                    if requests_sent == self.request_batch_limit:
+                        data, urls = await self._retrive_and_parse_results(
+                            tasks=scrape_tasks,
+                            scraped_urls=scraped_urls,
+                        )
+                        self.scraped_data += data
+                        self.scraped_content_urls += urls
+                        requests_sent = 0
+                        scrape_tasks = []
+                        scraped_urls = []
+        if scrape_tasks:
+            data, urls = await self._retrive_and_parse_results(
+                tasks=scrape_tasks,
+                scraped_urls=scraped_urls,
+            )
+            self.scraped_data += data
+            self.scraped_content_urls += urls
+        with open(f"{self.file_path}/scraped_content_urls.json", "w") as f:
+            json.dump(list(set(self.scraped_content_urls)), f, indent=3)
+        return self.scraped_data
+
+    async def _retrieve_content_url_data(self):
+        print(f"(Scraper):({(self.name)}) - beginning content scraping")
+        if self.content_request_method == RequestMethod.AIOHTTP:
+            async with aiohttp.ClientSession() as session:
+                scraped_data = await self._scrape_content_urls(
+                    session=session,
+                    page=None,
+                )
+        elif self.content_request_method == RequestMethod.PLAYWRIGHT:
+            async with async_playwright() as playwright:
+                browser = await playwright.chromium.launch(headless=True)
+                page = await browser.new_page()
+                scraped_data = self._scrape_content_urls(
+                    session=None,
+                    page=page,
+                )
         return scraped_data
 
     async def _retrieve_content_urls(self):
@@ -127,5 +171,5 @@ class Spider:
 
     async def crawl_website(self):
         self.listing_group_content_urls = await self._retrieve_content_urls()
-        self.scraped_data = await self._scrape_content_urls()
+        self.scraped_data = await self._retrieve_content_url_data()
         self._save_scraped_data()

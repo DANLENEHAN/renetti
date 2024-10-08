@@ -50,7 +50,8 @@ class UkGymEquipmentSpider(Spider):
             page_number = 1
             # This scraper doesn't work well in headless mode
             browser = await playwright.chromium.launch(headless=False)
-            page = await browser.new_page()
+            context = await browser.new_context()
+            page = await context.new_page()
             res = []
             while True:
                 await page.goto(f"{url}#page{page_number}")
@@ -61,12 +62,14 @@ class UkGymEquipmentSpider(Spider):
                     break
                 html_source = await page.content()
                 soup = BeautifulSoup(html_source, "html.parser")
-                image_divs = soup.find_all("div", class_="product__image")
+                search_results_list = soup.find("ul", id="js-search-results-products__list")
+                image_divs = search_results_list.find_all("div", class_="product__image")
                 res += [
                     f"{self.base_url}{i.find("a", class_="infclick").get("href")}"
                     for i in image_divs
                 ]
                 page_number += 1
+            await context.close()
             await browser.close()
         return list(set(res))
 
@@ -77,7 +80,8 @@ class UkGymEquipmentSpider(Spider):
         *args,
         **kwargs,
     ) -> ScrapedEquipment:
-        page = await browser.new_page()
+        context = await browser.new_context()
+        page = await context.new_page()
         await page.goto(url)
         raw_html = await page.content()
         soup = BeautifulSoup(raw_html, "html.parser")
@@ -105,6 +109,7 @@ class UkGymEquipmentSpider(Spider):
                 weight_stack = re.sub(r"Weight Stack:\s*", "", p.text)
             if "Product Weight" in p.text:
                 weight = re.sub(r"Product Weight:\s*", "", p.text)
+        await context.close()
 
         return ScrapedEquipment(
             name=name,

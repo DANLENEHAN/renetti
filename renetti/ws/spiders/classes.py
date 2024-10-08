@@ -60,7 +60,11 @@ class Spider:
             listing_url: asyncio.create_task(parsers["content_url_parser"](url=listing_url))
             for listing_url, parsers in self.listing_group_parser_map.items()
         }
-        return {u: await task for u, task in listing_group_content_urls.items()}
+        results = await asyncio.gather(*listing_group_content_urls.values())
+        return {
+            listing_url: result
+            for listing_url, result in zip(listing_group_content_urls.keys(), results)
+        }
 
     def _scrape_content_link(
         self,
@@ -152,6 +156,7 @@ class Spider:
                     session=None,
                     browser=browser,
                 )
+                await browser.close()
         return scraped_data
 
     async def _retrieve_content_urls(self):

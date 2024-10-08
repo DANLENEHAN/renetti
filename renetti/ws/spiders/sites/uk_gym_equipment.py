@@ -80,8 +80,8 @@ class UkGymEquipmentSpider(Spider):
         *args,
         **kwargs,
     ) -> ScrapedEquipment:
-        async with browser.new_context() as context:
-            async with context.new_page() as page:
+        async with await browser.new_context() as context:
+            async with await context.new_page() as page:
                 await page.goto(url)
                 raw_html = await page.content()
                 soup = BeautifulSoup(raw_html, "html.parser")

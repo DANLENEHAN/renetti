@@ -164,38 +164,29 @@ class Spider:
         if scraped_content_urls:
             if os.path.exists(f"{self.file_path}/scraped_content_urls.json"):
                 with open(f"{self.file_path}/scraped_content_urls.json", "r") as f:
-                    print(f"(Scraper):({(self.name)}) - loading previous scraped content urls")
                     last_run_data = json.load(f)
             else:
-                print(f"(Scraper):({(self.name)}) - no previous content urls found, starting fresh")
                 last_run_data = []
             self.scraped_content_urls = last_run_data + scraped_content_urls
             # Now open the file in write mode to save the combined data
             with open(f"{self.file_path}/scraped_content_urls.json", "w") as f:
-                print(f"(Scraper):({(self.name)}) - saving scraped content urls")
-                json.dump(scraped_content_urls, f, indent=3)
-        else:
-            print(f"(Scraper):({(self.name)}) - has no content urls to save exiting")
+                json.dump(self.scraped_content_urls, f, indent=3)
         return
 
     def _save_scraped_content_data(self, scraped_data: List[ScrapedEquipment]):
         if scraped_data:
             if os.path.exists(f"{self.file_path}/scraped_data.json"):
                 with open(f"{self.file_path}/scraped_data.json", "r") as f:
-                    print(f"(Scraper):({(self.name)}) - loading previous scraped content data")
                     last_run_data = json.load(f)
             else:
-                print(f"(Scraper):({(self.name)}) - no previous content data found, starting fresh")
                 last_run_data = []
             # Now open the file in write mode to save the combined data
             with open(f"{self.file_path}/scraped_data.json", "w") as f:
-                print(f"(Scraper):({(self.name)}) - saving scraped content data")
                 json.dump(last_run_data + scraped_data, f, indent=3)
-        else:
-            print(f"(Scraper):({(self.name)}) - has no content data to save exiting")
         return
 
     async def crawl_website(self):
         await self._retrieve_content_urls()
-        # await self._retrieve_content_url_data()
+        await self._retrieve_content_url_data()
+        print(f"(Scraper):({self.name}) - all scraping completed")
         exit(0)

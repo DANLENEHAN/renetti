@@ -101,6 +101,7 @@ class Spider:
         scrape_tasks = []
         scraped_urls = []
         for listing_url, listing_group_content_urls in self.listing_group_content_urls.items():
+            print(f"(Scraper):({self.name}) - beginning scraping of listing group '{listing_url}'")
             requests_sent = 0
             for content_url in listing_group_content_urls:
                 if content_url not in self.scraped_content_urls:
@@ -124,6 +125,7 @@ class Spider:
                         requests_sent = 0
                         scrape_tasks = []
                         scraped_urls = []
+            print(f"(Scraper):({self.name}) - completed scraping of listing group '{listing_url}'")
         if scrape_tasks:
             data, urls = await self._retrive_and_parse_results(
                 tasks=scrape_tasks,

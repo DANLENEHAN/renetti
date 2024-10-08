@@ -14,6 +14,9 @@ from renetti.ws.spiders.types import (
 
 
 class UkGymEquipmentSpider(Spider):
+
+    base_url: str
+
     def __init__(self, request_batch_limit: Optional[int] = None):
         listing_group_parser_map = {
             "https://www.ukgymequipment.com/cardio-machines-c11": ListingUrlParsersMapper(
@@ -40,6 +43,7 @@ class UkGymEquipmentSpider(Spider):
             request_batch_limit=request_batch_limit,
             content_request_method=RequestMethod.PLAYWRIGHT,
         )
+        self.base_url = "https://www.ukgymequipment.com"
 
     async def content_url_parser_all(self, url: str) -> List[str]:
         async with async_playwright() as playwright:
@@ -58,7 +62,10 @@ class UkGymEquipmentSpider(Spider):
                 html_source = await page.content()
                 soup = BeautifulSoup(html_source, "html.parser")
                 image_divs = soup.find_all("div", class_="product__image")
-                res += [f"{url}/{i.find("a", class_="infclick").get("href")}" for i in image_divs]
+                res += [
+                    f"{self.base_url}{i.find("a", class_="infclick").get("href")}"
+                    for i in image_divs
+                ]
                 page_number += 1
             await browser.close()
         return list(set(res))

@@ -1,7 +1,7 @@
 import asyncio
 import json
 import os
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional
 
 import aiohttp
 from playwright.async_api import Browser, async_playwright
@@ -17,7 +17,6 @@ class Spider:
 
     listing_group_content_urls: Dict[str, List[str]]
     scraped_content_urls: List[str]
-    scraped_data: List[ScrapedEquipment]
     content_request_method: RequestMethod
 
     def __init__(
@@ -33,7 +32,6 @@ class Spider:
         self.request_batch_limit = request_batch_limit
         self.listing_group_parser_map = listing_group_parser_map
         self.content_request_method = content_request_method
-        self.scraped_data = []
         self._setup_spider()
         return
 
@@ -87,9 +85,9 @@ class Spider:
             )
         )
 
-    async def _retrive_and_parse_results(
+    async def _retrive_and_save_successful_results(
         self, tasks: List[asyncio.Task], scraped_urls: List[str]
-    ) -> Tuple[List[Union[ScrapedEquipment]], List[str]]:
+    ) -> None:
         scraped_data = []
         scraped_content_urls = []
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -97,17 +95,19 @@ class Spider:
             if not isinstance(result, BaseException):
                 scraped_data.append(result)
                 scraped_content_urls.append(scraped_urls[index])
-        return scraped_data, scraped_content_urls
+        self._save_scraped_content_data(scraped_data=scraped_data)
+        self._update_and_save_scraped_content_urls(scraped_content_urls=scraped_content_urls)
+        return
 
     async def _scrape_content_urls(
         self, session: Optional[aiohttp.ClientSession], browser: Optional[Browser]
     ):
         scrape_tasks = []
         scraped_urls = []
-        for listing_url, listing_group_content_urls in self.listing_group_content_urls.items():
+        for listing_url, group_content_urls in self.listing_group_content_urls.items():
             print(f"(Scraper):({self.name}) - beginning scraping of listing group '{listing_url}'")
             requests_sent = 0
-            for content_url in listing_group_content_urls:
+            for content_url in group_content_urls:
                 if content_url not in self.scraped_content_urls:
                     scrape_tasks.append(
                         self._scrape_content_link(
@@ -120,26 +120,20 @@ class Spider:
                     scraped_urls.append(content_url)
                     requests_sent += 1
                     if requests_sent == self.request_batch_limit:
-                        data, urls = await self._retrive_and_parse_results(
+                        await self._retrive_and_save_successful_results(
                             tasks=scrape_tasks,
                             scraped_urls=scraped_urls,
                         )
-                        self.scraped_data += data
-                        self.scraped_content_urls += urls
                         requests_sent = 0
                         scrape_tasks = []
                         scraped_urls = []
             print(f"(Scraper):({self.name}) - completed scraping of listing group '{listing_url}'")
         if scrape_tasks:
-            data, urls = await self._retrive_and_parse_results(
+            await self._retrive_and_save_successful_results(
                 tasks=scrape_tasks,
                 scraped_urls=scraped_urls,
             )
-            self.scraped_data += data
-            self.scraped_content_urls += urls
-        with open(f"{self.file_path}/scraped_content_urls.json", "w") as f:
-            json.dump(list(set(self.scraped_content_urls)), f, indent=3)
-        return self.scraped_data
+        return
 
     async def _retrieve_content_url_data(self):
         print(f"(Scraper):({(self.name)}) - beginning content scraping")
@@ -164,19 +158,44 @@ class Spider:
             self.listing_group_content_urls = await self._scrape_listing_urls()
             with open(f"{self.file_path}/listing_group_content_urls.json", "w") as f:
                 json.dump(self.listing_group_content_urls, f, indent=3)
-        return self.listing_group_content_urls
+        return
 
-    def _save_scraped_data(self):
-        if self.scraped_data:
-            with open(f"{self.file_path}/scraped_data.json", "w") as f:
-                print(f"(Scraper):({(self.name)}) - saving scraped data")
-                json.dump(self.scraped_data, f, indent=3)
-                exit(0)
+    def _update_and_save_scraped_content_urls(self, scraped_content_urls: List[str]):
+        if scraped_content_urls:
+            if os.path.exists(f"{self.file_path}/scraped_content_urls.json"):
+                with open(f"{self.file_path}/scraped_content_urls.json", "r") as f:
+                    print(f"(Scraper):({(self.name)}) - loading previous scraped content urls")
+                    last_run_data = json.load(f)
+            else:
+                print(f"(Scraper):({(self.name)}) - no previous content urls found, starting fresh")
+                last_run_data = []
+            self.scraped_content_urls = last_run_data + scraped_content_urls
+            # Now open the file in write mode to save the combined data
+            with open(f"{self.file_path}/scraped_content_urls.json", "w") as f:
+                print(f"(Scraper):({(self.name)}) - saving scraped content urls")
+                json.dump(scraped_content_urls, f, indent=3)
         else:
-            print(f"(Scraper):({(self.name)}) - has no data to save exiting")
-            exit(1)
+            print(f"(Scraper):({(self.name)}) - has no content urls to save exiting")
+        return
+
+    def _save_scraped_content_data(self, scraped_data: List[ScrapedEquipment]):
+        if scraped_data:
+            if os.path.exists(f"{self.file_path}/scraped_data.json"):
+                with open(f"{self.file_path}/scraped_data.json", "r") as f:
+                    print(f"(Scraper):({(self.name)}) - loading previous scraped content data")
+                    last_run_data = json.load(f)
+            else:
+                print(f"(Scraper):({(self.name)}) - no previous content data found, starting fresh")
+                last_run_data = []
+            # Now open the file in write mode to save the combined data
+            with open(f"{self.file_path}/scraped_data.json", "w") as f:
+                print(f"(Scraper):({(self.name)}) - saving scraped content data")
+                json.dump(last_run_data + scraped_data, f, indent=3)
+        else:
+            print(f"(Scraper):({(self.name)}) - has no content data to save exiting")
+        return
 
     async def crawl_website(self):
-        self.listing_group_content_urls = await self._retrieve_content_urls()
-        self.scraped_data = await self._retrieve_content_url_data()
-        self._save_scraped_data()
+        await self._retrieve_content_urls()
+        # await self._retrieve_content_url_data()
+        exit(0)

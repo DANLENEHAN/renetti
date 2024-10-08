@@ -80,48 +80,57 @@ class UkGymEquipmentSpider(Spider):
         *args,
         **kwargs,
     ) -> ScrapedEquipment:
-        context = await browser.new_context()
-        page = await context.new_page()
-        await page.goto(url)
-        raw_html = await page.content()
-        soup = BeautifulSoup(raw_html, "html.parser")
-        brand = soup.find("span", class_="product-content__title--brand").text
-        brand = re.sub(r"[\s\n]+", "", brand).strip()
-        name = soup.find("span", id="js-product-title").text
-        name = re.sub(r"[\n]+", "", name).strip()
-        description = soup.find("div", id="product__description").text
-        image_div = soup.find("div", class_="product__image__main")
-        image_link = f"https://www.ukgymequipment.com{image_div.find("img").get("src")}"
+        async with browser.new_context() as context:
+            async with context.new_page() as page:
+                await page.goto(url)
+                raw_html = await page.content()
+                soup = BeautifulSoup(raw_html, "html.parser")
 
-        width = None
-        length = None
-        height = None
-        weight_stack = None
-        weight = None
-        for p in soup.find("div", id="product__description").findAll("p"):
-            if "Width" in p.text:
-                width = re.sub(r"Width:\s*", "", p.text)
-            if "Length" in p.text:
-                length = re.sub(r"Length:\s*", "", p.text)
-            if "Height" in p.text:
-                height = re.sub(r"Height:\s*", "", p.text)
-            if "Weight Stack" in p.text:
-                weight_stack = re.sub(r"Weight Stack:\s*", "", p.text)
-            if "Product Weight" in p.text:
-                weight = re.sub(r"Product Weight:\s*", "", p.text)
-        await context.close()
+                # Extract and clean the brand
+                brand = soup.find("span", class_="product-content__title--brand").text
+                brand = re.sub(r"[\s\n]+", "", brand).strip()
 
-        return ScrapedEquipment(
-            name=name,
-            brand=brand,
-            image_link=[image_link],
-            description=description,
-            sku=None,
-            specification=EquipmentSpecification(
-                weight=weight,
-                height=height,
-                length=length,
-                width=width,
-                weight_stack=weight_stack,
-            ),
-        )
+                # Extract and clean the name
+                name = soup.find("span", id="js-product-title").text
+                name = re.sub(r"[\n]+", "", name).strip()
+
+                # Extract description
+                description = soup.find("div", id="product__description").text
+
+                # Extract image link
+                image_div = soup.find("div", class_="product__image__main")
+                image_link = f"https://www.ukgymequipment.com{image_div.find('img').get('src')}"
+
+                # Extract specifications
+                width = None
+                length = None
+                height = None
+                weight_stack = None
+                weight = None
+
+                for p in soup.find("div", id="product__description").findAll("p"):
+                    if "Width" in p.text:
+                        width = re.sub(r"Width:\s*", "", p.text)
+                    if "Length" in p.text:
+                        length = re.sub(r"Length:\s*", "", p.text)
+                    if "Height" in p.text:
+                        height = re.sub(r"Height:\s*", "", p.text)
+                    if "Weight Stack" in p.text:
+                        weight_stack = re.sub(r"Weight Stack:\s*", "", p.text)
+                    if "Product Weight" in p.text:
+                        weight = re.sub(r"Product Weight:\s*", "", p.text)
+
+                return ScrapedEquipment(
+                    name=name,
+                    brand=brand,
+                    image_link=[image_link],
+                    description=description,
+                    sku=None,
+                    specification=EquipmentSpecification(
+                        weight=weight,
+                        height=height,
+                        length=length,
+                        width=width,
+                        weight_stack=weight_stack,
+                    ),
+                )

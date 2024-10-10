@@ -48,7 +48,7 @@ class UkGymEquipmentSpider(Spider):
     async def content_url_parser_all(self, url: str) -> List[str]:
         async with async_playwright() as playwright:
             page_number = 1
-            # This scraper doesn't work well in headless mode
+            # This scraper doesn't work in headless mode they block non browser requests
             browser = await playwright.chromium.launch(headless=False)
             context = await browser.new_context()
             page = await context.new_page()

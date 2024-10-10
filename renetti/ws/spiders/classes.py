@@ -54,11 +54,15 @@ class Spider:
 
     async def _scrape_listing_urls(self) -> Dict[str, List[str]]:
         print(f"(Scraper):({self.name}) - gathering content links")
-        listing_group_content_urls = {
-            listing_url: asyncio.create_task(parsers["content_url_parser"](url=listing_url))
-            for listing_url, parsers in self.listing_group_parser_map.items()
-        }
-        results = await asyncio.gather(*listing_group_content_urls.values())
+        async with async_playwright() as playwright:
+            async with await playwright.chromium.launch(headless=False) as browser:
+                listing_group_content_urls = {
+                    listing_url: asyncio.create_task(
+                        parsers["content_url_parser"](url=listing_url, browser=browser)
+                    )
+                    for listing_url, parsers in self.listing_group_parser_map.items()
+                }
+                results = await asyncio.gather(*listing_group_content_urls.values())
         return {
             listing_url: result
             for listing_url, result in zip(listing_group_content_urls.keys(), results)
@@ -100,7 +104,9 @@ class Spider:
         return
 
     async def _scrape_content_urls(
-        self, session: Optional[aiohttp.ClientSession], browser: Optional[Browser]
+        self,
+        session: Optional[aiohttp.ClientSession] = None,
+        browser: Optional[Browser] = None,
     ):
         scrape_tasks = []
         scraped_urls = []
@@ -139,18 +145,11 @@ class Spider:
         print(f"(Scraper):({(self.name)}) - beginning content scraping")
         if self.content_request_method == RequestMethod.AIOHTTP:
             async with aiohttp.ClientSession() as session:
-                scraped_data = await self._scrape_content_urls(
-                    session=session,
-                    browser=None,
-                )
+                scraped_data = await self._scrape_content_urls(session=session)
         elif self.content_request_method == RequestMethod.PLAYWRIGHT:
             async with async_playwright() as playwright:
-                browser = await playwright.chromium.launch(headless=False)
-                scraped_data = await self._scrape_content_urls(
-                    session=None,
-                    browser=browser,
-                )
-                await browser.close()
+                async with await playwright.chromium.launch(headless=False) as browser:
+                    scraped_data = await self._scrape_content_urls(browser=browser)
         return scraped_data
 
     async def _retrieve_content_urls(self):

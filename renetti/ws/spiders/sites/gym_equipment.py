@@ -2,7 +2,7 @@ from typing import List
 
 import aiohttp
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright
+from playwright.async_api import Browser
 
 from renetti.ws.spiders.classes import Spider
 from renetti.ws.spiders.types import EquipmentSpecification, RequestMethod, ScrapedEquipment
@@ -22,17 +22,15 @@ class GymEquipmentSpider(Spider):
             content_request_method=RequestMethod.AIOHTTP,
         )
 
-    async def content_url_parser_all(self, url: str) -> List[str]:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=True)
-            page = await browser.new_page()
-            await page.goto(url)
-            await page.wait_for_selector(".product-item-photo")
-            html_source = await page.content()
-            soup = BeautifulSoup(html_source, "html.parser")
-            a_elements = soup.find_all("a", class_="product-item-photo")
-            await browser.close()
-            return [a.get("href") for a in a_elements]
+    async def content_url_parser_all(self, url: str, browser: Browser) -> List[str]:
+        async with await browser.new_context() as context:
+            async with await context.new_page() as page:
+                await page.goto(url)
+                await page.wait_for_selector(".product-item-photo")
+                html_source = await page.content()
+                soup = BeautifulSoup(html_source, "html.parser")
+                a_elements = soup.find_all("a", class_="product-item-photo")
+        return [a.get("href") for a in a_elements]
 
     async def content_page_parser_all(
         self,

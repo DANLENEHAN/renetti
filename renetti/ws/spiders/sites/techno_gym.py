@@ -48,7 +48,7 @@ class TechnoGymSpider(Spider):
         )
         self.base_url = "https://www.technogym.com"
 
-    async def content_url_parser_all(self, url: str, browser: Browser) -> List[str]:
+    async def content_url_parser(self, url: str, browser: Browser) -> List[str]:
         async with await browser.new_context() as context:
             async with await context.new_page() as page:
                 await page.goto(url)

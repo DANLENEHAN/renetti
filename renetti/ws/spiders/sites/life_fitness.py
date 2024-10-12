@@ -1,6 +1,6 @@
-import aiohttp
 from typing import List, Optional
 
+import aiohttp
 from bs4 import BeautifulSoup
 from playwright.async_api import Browser
 
@@ -39,9 +39,12 @@ class LifeFitnessSpider(Spider):
                     await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                     html = await page.content()
                     soup = BeautifulSoup(markup=html, features="html.parser")
-                    urls += [f"{self.base_url}{u.get("href")}" for u in soup.findAll("a", class_="product-grid--item")]
+                    urls += [
+                        f"{self.base_url}{u.get("href")}"
+                        for u in soup.findAll("a", class_="product-grid--item")
+                    ]
                     try:
-                        await page.wait_for_selector(f'a[title="Next"]', timeout=2000)
+                        await page.wait_for_selector('a[title="Next"]', timeout=2000)
                     except Exception:
                         break
                     page_number += 1

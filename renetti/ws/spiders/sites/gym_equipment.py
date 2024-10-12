@@ -5,17 +5,17 @@ from bs4 import BeautifulSoup
 from playwright.async_api import Browser
 
 from renetti.ws.spiders.classes import Spider
-from renetti.ws.spiders.types import RequestMethod, ScrapedEquipment
+from renetti.ws.spiders.types import RequestMethod, ScrapedEquipment, ListingUrlParsersMapper
 from renetti.ws.spiders.utils import parse_product_json_ld_from_page
 
 
 class GymEquipmentSpider(Spider):
     def __init__(self, request_batch_limit: Optional[int] = None):
         listing_group_parser_map = {
-            "https://gymequipment.co.uk/strength-conditioning?product_list_limit=all": {
-                "content_url_parser": self.content_url_parser,
-                "content_page_parser": self.content_page_parser,
-            }
+            "https://gymequipment.co.uk/strength-conditioning?product_list_limit=all": ListingUrlParsersMapper(
+                content_url_parser=self.content_url_parser,
+                content_page_parser=self.content_page_parser,
+            )
         }
         super().__init__(
             name="gymequipment",

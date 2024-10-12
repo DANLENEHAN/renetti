@@ -10,13 +10,16 @@ from renetti.ws.spiders.types import ListingUrlParsersMapper, RequestMethod, Scr
 
 
 class Spider:
-    name: str
-    base_file_path: str = "files"
-    request_batch_limit: Optional[int]
-    listing_group_parser_map: Dict[str, ListingUrlParsersMapper]
 
+    # Base Class Attributes
+    base_file_path: str = "files"
     listing_group_content_urls: Dict[str, List[str]]
     scraped_content_urls: List[str]
+
+    # Init Class Attributes
+    name: str
+    request_batch_limit: Optional[int]
+    listing_group_parser_map: Dict[str, ListingUrlParsersMapper]
     content_request_method: RequestMethod
 
     def __init__(
@@ -24,11 +27,9 @@ class Spider:
         name: str,
         listing_group_parser_map: Dict[str, ListingUrlParsersMapper],
         content_request_method: RequestMethod,
-        overwrite_base_file_path: Optional[str] = None,
         request_batch_limit: Optional[int] = 100,
     ):
         self.name = name
-        self.base_file_path = overwrite_base_file_path or self.base_file_path
         self.request_batch_limit = request_batch_limit
         self.listing_group_parser_map = listing_group_parser_map
         self.content_request_method = content_request_method

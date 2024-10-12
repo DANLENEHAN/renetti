@@ -16,8 +16,8 @@ class TechnoGymSpider(Spider):
     def __init__(self, request_batch_limit: Optional[int] = None):
         listing_group_parser_map = {
             url: ListingUrlParsersMapper(
-                content_url_parser=self.content_url_parser_all,
-                content_page_parser=self.content_page_parser_all,
+                content_url_parser=self.content_url_parser,
+                content_page_parser=self.content_page_parser,
             )
             for url in [
                 "https://www.technogym.com/en-GB/category/exercise-tools/",
@@ -69,7 +69,7 @@ class TechnoGymSpider(Spider):
                     for a in soup.findAll("a", class_="css-1jke4yk")
                 ]
 
-    async def content_page_parser_all(
+    async def content_page_parser(
         self,
         url: str,
         browser: Browser,

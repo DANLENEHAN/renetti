@@ -13,8 +13,8 @@ class GymEquipmentSpider(Spider):
     def __init__(self, request_batch_limit: Optional[int] = None):
         listing_group_parser_map = {
             "https://gymequipment.co.uk/strength-conditioning?product_list_limit=all": {
-                "content_url_parser": self.content_url_parser_all,
-                "content_page_parser": self.content_page_parser_all,
+                "content_url_parser": self.content_url_parser,
+                "content_page_parser": self.content_page_parser,
             }
         }
         super().__init__(
@@ -24,7 +24,7 @@ class GymEquipmentSpider(Spider):
             content_request_method=RequestMethod.AIOHTTP,
         )
 
-    async def content_url_parser_all(self, url: str, browser: Browser) -> List[str]:
+    async def content_url_parser(self, url: str, browser: Browser) -> List[str]:
         async with await browser.new_context() as context:
             async with await context.new_page() as page:
                 await page.goto(url)
@@ -34,7 +34,7 @@ class GymEquipmentSpider(Spider):
                 a_elements = soup.find_all("a", class_="product-item-photo")
         return [a.get("href") for a in a_elements]
 
-    async def content_page_parser_all(
+    async def content_page_parser(
         self,
         url: str,
         session: aiohttp.ClientSession,

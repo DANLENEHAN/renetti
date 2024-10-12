@@ -1,7 +1,5 @@
 import asyncio
 
-from renetti.ws.spiders import (
-    TechnoGymSpider,
-)
+from renetti.ws.spiders import LifeFitnessSpider
 
-asyncio.run(TechnoGymSpider(request_batch_limit=10).crawl_website())
+asyncio.run(LifeFitnessSpider(request_batch_limit=20).crawl_website())

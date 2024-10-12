@@ -79,7 +79,26 @@ class TechnoGymSpider(Spider):
     ) -> ScrapedEquipment:
         async with await browser.new_context() as context:
             async with await context.new_page() as page:
-                await page.goto(url)
-                raw_html = await page.content()
-                soup = BeautifulSoup(raw_html, "html.parser")
-                return parse_product_json_ld_from_page(soup=soup)
+                await page.goto(url=url)
+                html = await page.content()
+                soup = BeautifulSoup(markup=html)
+                scraped_equipment = parse_product_json_ld_from_page(soup=soup)
+
+                glb_frame = None
+                glb_image = None
+                for frame in page.frames:
+                    if "londondynamics.com" in frame.url:
+                        glb_frame = frame
+                        await glb_frame.wait_for_selector("model-viewer")
+                        break
+
+                if glb_frame:
+                    frame_content = await glb_frame.content()
+                    frame_soup = BeautifulSoup(markup=frame_content)
+                    model_viewer = frame_soup.find("model-viewer")
+                    if model_viewer:
+                        glb_image = model_viewer.get("src")
+
+                if glb_image:
+                    scraped_equipment["image_links"].append(glb_image)
+        return scraped_equipment

@@ -74,7 +74,7 @@ class UkGymEquipmentSpider(Spider):
     ) -> ScrapedEquipment:
         async with await browser.new_context() as context:
             async with await context.new_page() as page:
-                await page.goto(url)
-                raw_html = await page.content()
-                soup = BeautifulSoup(raw_html, "html.parser")
-                return parse_product_json_ld_from_page(soup=soup)
+                await page.goto(url=url)
+                html = await page.content()
+                soup = BeautifulSoup(markup=html)
+        return parse_product_json_ld_from_page(soup=soup)

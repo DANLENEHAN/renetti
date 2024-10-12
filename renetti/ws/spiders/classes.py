@@ -99,6 +99,8 @@ class Spider:
             if not isinstance(result, BaseException):
                 scraped_data.append(result)
                 scraped_content_urls.append(scraped_urls[index])
+            else:
+                print(f"Url '{scraped_urls[index]}' - recieved exception '{str(result)}'")
         self._save_scraped_content_data(scraped_data=scraped_data)
         self._update_and_save_scraped_content_urls(scraped_content_urls=scraped_content_urls)
         return

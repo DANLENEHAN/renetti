@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -10,7 +10,7 @@ from renetti.ws.spiders.utils import parse_product_json_ld_from_page
 
 
 class GymEquipmentSpider(Spider):
-    def __init__(self):
+    def __init__(self, request_batch_limit: Optional[int] = None):
         listing_group_parser_map = {
             "https://gymequipment.co.uk/strength-conditioning?product_list_limit=all": {
                 "content_url_parser": self.content_url_parser_all,
@@ -19,6 +19,7 @@ class GymEquipmentSpider(Spider):
         }
         super().__init__(
             name="gymequipment",
+            request_batch_limit=request_batch_limit,
             listing_group_parser_map=listing_group_parser_map,
             content_request_method=RequestMethod.AIOHTTP,
         )

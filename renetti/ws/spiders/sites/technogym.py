@@ -59,7 +59,6 @@ class TechnoGymSpider(Spider):
                         await button.scroll_into_view_if_needed()
                         await button.click()
                     except Exception:
-                        print("Button Gone")
                         break
                     await asyncio.sleep(1)
 

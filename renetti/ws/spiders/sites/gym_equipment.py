@@ -5,7 +5,8 @@ from bs4 import BeautifulSoup
 from playwright.async_api import Browser
 
 from renetti.ws.spiders.classes import Spider
-from renetti.ws.spiders.types import EquipmentSpecification, RequestMethod, ScrapedEquipment
+from renetti.ws.spiders.types import RequestMethod, ScrapedEquipment
+from renetti.ws.spiders.utils import parse_product_json_ld_from_page
 
 
 class GymEquipmentSpider(Spider):
@@ -42,8 +43,6 @@ class GymEquipmentSpider(Spider):
         async with session.get(url) as response:
             raw_html = await response.text()
             soup = BeautifulSoup(raw_html, "html.parser")
-            equipment_title = soup.find("span", class_="base")
-            equipment_description = soup.find("div", id="product.info.description")
             equipment_image = soup.find(
                 "div",
                 class_=[
@@ -57,37 +56,6 @@ class GymEquipmentSpider(Spider):
             equipment_image_link = (
                 equipment_image.find("img").get("src") if equipment_image else None
             )
-
-            scraped_equipment = ScrapedEquipment(
-                name=equipment_title.text if equipment_title else None,
-                description=(equipment_description.text if equipment_description else None),
-                image_link=equipment_image_link,
-                brand=None,
-                specification=EquipmentSpecification(
-                    weight=None,
-                    height=None,
-                    length=None,
-                    width=None,
-                    weight_stack=None,
-                ),
-                sku=None,
-            )
-            equipment_specifications = soup.find("table", id="product-attribute-specs-table")
-            if equipment_specifications:
-                for td, tr in list(
-                    zip(
-                        equipment_specifications.findAll("td"),
-                        equipment_specifications.findAll("tr"),
-                    )
-                ):
-                    if "SKU" in tr.text:
-                        scraped_equipment["sku"] = td.text
-                    elif "Weight" in tr.text:
-                        scraped_equipment["specification"]["weight"] = td.text
-                    elif "Height" in tr.text:
-                        scraped_equipment["specification"]["height"] = td.text
-                    elif "Length" in tr.text:
-                        scraped_equipment["specification"]["length"] = td.text
-                    elif "Width" in tr.text:
-                        scraped_equipment["specification"]["width"] = td.text
+        scraped_equipment = parse_product_json_ld_from_page(soup=soup)
+        scraped_equipment["image_links"] = [equipment_image_link]
         return scraped_equipment

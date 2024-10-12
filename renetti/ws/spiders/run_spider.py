@@ -1,5 +1,5 @@
 import asyncio
 
-from renetti.ws.spiders.sites.uk_gym_equipment import UkGymEquipmentSpider
+from renetti.ws.spiders.sites.technogym import TechnoGymSpider
 
-asyncio.run(UkGymEquipmentSpider(request_batch_limit=20).crawl_website())
+asyncio.run(TechnoGymSpider(request_batch_limit=20).crawl_website())

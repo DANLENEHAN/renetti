@@ -7,21 +7,14 @@ class RequestMethod(Enum):
     AIOHTTP = "aiohttp"
 
 
-class EquipmentSpecification(TypedDict):
-    weight: Optional[str]
-    height: Optional[str]
-    width: Optional[str]
-    length: Optional[str]
-    weight_stack: Optional[str]
-
-
 class ScrapedEquipment(TypedDict):
     name: str
-    image_link: List[str]
-    brand: Optional[str]
+    image_links: List[str]
+    mpn: Optional[str]
     description: Optional[str]
-    specification: EquipmentSpecification
-    sku: Optional[str]  # https://www.barcodelookup.com/
+    brands: Optional[List[str]]
+    categories: Optional[List[str]]
+    skus: Optional[List[str]]  # https://www.barcodelookup.com/
 
 
 class ListingUrlParsersMapper(TypedDict):

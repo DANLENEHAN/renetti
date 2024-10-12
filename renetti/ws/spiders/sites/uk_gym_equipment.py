@@ -1,16 +1,11 @@
-import re
 from typing import List, Optional
 
 from bs4 import BeautifulSoup
 from playwright.async_api import Browser
 
 from renetti.ws.spiders.classes import Spider
-from renetti.ws.spiders.types import (
-    EquipmentSpecification,
-    ListingUrlParsersMapper,
-    RequestMethod,
-    ScrapedEquipment,
-)
+from renetti.ws.spiders.types import ListingUrlParsersMapper, RequestMethod, ScrapedEquipment
+from renetti.ws.spiders.utils import parse_product_json_ld_from_page
 
 
 class UkGymEquipmentSpider(Spider):
@@ -82,52 +77,4 @@ class UkGymEquipmentSpider(Spider):
                 await page.goto(url)
                 raw_html = await page.content()
                 soup = BeautifulSoup(raw_html, "html.parser")
-
-                # Extract and clean the brand
-                brand = soup.find("span", class_="product-content__title--brand").text
-                brand = re.sub(r"[\s\n]+", "", brand).strip()
-
-                # Extract and clean the name
-                name = soup.find("span", id="js-product-title").text
-                name = re.sub(r"[\n]+", "", name).strip()
-
-                # Extract description
-                description = soup.find("div", id="product__description").text
-
-                # Extract image link
-                image_div = soup.find("div", class_="product__image__main")
-                image_link = f"https://www.ukgymequipment.com{image_div.find('img').get('src')}"
-
-                # Extract specifications
-                width = None
-                length = None
-                height = None
-                weight_stack = None
-                weight = None
-
-                for p in soup.find("div", id="product__description").findAll("p"):
-                    if "Width" in p.text:
-                        width = re.sub(r"Width:\s*", "", p.text)
-                    if "Length" in p.text:
-                        length = re.sub(r"Length:\s*", "", p.text)
-                    if "Height" in p.text:
-                        height = re.sub(r"Height:\s*", "", p.text)
-                    if "Weight Stack" in p.text:
-                        weight_stack = re.sub(r"Weight Stack:\s*", "", p.text)
-                    if "Product Weight" in p.text:
-                        weight = re.sub(r"Product Weight:\s*", "", p.text)
-
-                return ScrapedEquipment(
-                    name=name,
-                    brand=brand,
-                    image_link=[image_link],
-                    description=description,
-                    sku=None,
-                    specification=EquipmentSpecification(
-                        weight=weight,
-                        height=height,
-                        length=length,
-                        width=width,
-                        weight_stack=weight_stack,
-                    ),
-                )
+                return parse_product_json_ld_from_page(soup=soup)

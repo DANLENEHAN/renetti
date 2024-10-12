@@ -6,6 +6,7 @@ from playwright.async_api import Browser
 
 from renetti.ws.spiders.classes import Spider
 from renetti.ws.spiders.types import ListingUrlParsersMapper, RequestMethod, ScrapedEquipment
+from renetti.ws.spiders.utils import parse_product_json_ld_from_page
 
 
 class TechnoGymSpider(Spider):
@@ -76,5 +77,9 @@ class TechnoGymSpider(Spider):
         *args,
         **kwargs,
     ) -> ScrapedEquipment:
-        async with await browser.new_context():
-            raise NotImplementedError
+        async with await browser.new_context() as context:
+            async with await context.new_page() as page:
+                await page.goto(url)
+                raw_html = await page.content()
+                soup = BeautifulSoup(raw_html, "html.parser")
+                return parse_product_json_ld_from_page(soup=soup)

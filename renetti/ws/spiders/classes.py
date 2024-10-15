@@ -65,7 +65,7 @@ class Spider:
                 }
                 results = await asyncio.gather(*listing_group_content_urls.values())
         return {
-            listing_url: result
+            listing_url: list(set(result))
             for listing_url, result in zip(listing_group_content_urls.keys(), results)
         }
 

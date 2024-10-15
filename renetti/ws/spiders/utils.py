@@ -16,6 +16,10 @@ def parse_product_json_ld_from_page(soup: BeautifulSoup) -> ScrapedEquipment:
     for elm in ld_script_elements:
         try:
             json_ld = json.loads(elm.text)
+            if isinstance(json_ld, list):
+                # There shouldn't be more than one product
+                # on a single page, if there is address uniquely
+                json_ld = json_ld[0]
             # Check if the JSON-LD type is 'Product'
             if json_ld.get("@type") == "Product":
                 product_information = json_ld

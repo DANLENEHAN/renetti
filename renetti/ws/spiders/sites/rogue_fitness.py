@@ -31,7 +31,7 @@ class RogueFitnessSpider(Spider):
             name="roguefitness",
             listing_group_parser_map=listing_group_parser_map,
             request_batch_limit=request_batch_limit,
-            content_request_method=RequestMethod.PLAYWRIGHT,
+            content_request_method=RequestMethod.AIOHTTP,
         )
         self.base_url = "https://www.roguefitness.com"
 

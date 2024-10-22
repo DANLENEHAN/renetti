@@ -1,5 +1,5 @@
 import asyncio
 
-from renetti.ws.spiders import AtlantisStrengthSpider
+from renetti.ws.spiders import EleikoSpider
 
-asyncio.run(AtlantisStrengthSpider(request_batch_limit=20).crawl_website())
+asyncio.run(EleikoSpider(request_batch_limit=5).crawl_website())

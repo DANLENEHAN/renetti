@@ -6,7 +6,6 @@ from playwright.async_api import Browser
 
 from renetti.ws.spiders.classes import Spider
 from renetti.ws.spiders.types import ListingUrlParsersMapper, RequestMethod, ScrapedEquipment
-from renetti.ws.spiders.utils import parse_product_json_ld_from_page
 
 
 class EleikoSpider(Spider):
@@ -44,20 +43,21 @@ class EleikoSpider(Spider):
             request_batch_limit=request_batch_limit,
             content_request_method=RequestMethod.PLAYWRIGHT,
         )
-        self.base_url = "https://eleiko.com/"
+        self.base_url = "https://eleiko.com"
 
     async def content_url_parser(self, url: str, browser: Browser) -> List[str]:
         async with await browser.new_context() as context:
             async with await context.new_page() as page:
                 await page.goto(url=url)
-                await page.wait_for_timeout(2000)
                 html = await page.content()
                 soup = BeautifulSoup(markup=html, features="html.parser")
-        return [
-            f"{self.base_url}{a.get("href")}"
-            for art in soup.find_all("article") or []
-            for a in art.find_all("a") or []
-        ]
+        urls = []
+        for art in soup.find_all("article"):
+            for a in art.find_all("a"):
+                content_url = a.get("href")
+                if "/en-gb/equipment" in content_url:
+                    urls.append(f"{self.base_url}{content_url}")
+        return urls
 
     async def content_page_parser(
         self,
@@ -69,9 +69,10 @@ class EleikoSpider(Spider):
         async with await browser.new_context() as context:
             async with await context.new_page() as page:
                 await page.goto(url=url)
+                await page.goto(url=url)
                 html = await page.content()
-                soup = BeautifulSoup(markup=html)
-                scraped_equipment = parse_product_json_ld_from_page(soup=soup)
+                soup = BeautifulSoup(markup=html, features="html.parser")
+                name = soup.find("span", class_="xl:text-h-4xl").text
                 image_links = []
                 for img in soup.findAll("img", class_="lg:group-hover:scale-103"):
                     raw_img_url = img.get("src").split("url=")[1]
@@ -81,9 +82,12 @@ class EleikoSpider(Spider):
 
                 categories = url.split("/equipment")[1].split("/")[1:-1]
                 description = soup.find_all("p", class_="lg:leading-normal")[0].text
-
-                scraped_equipment["brands"] = ["eleiko"]
-                scraped_equipment["image_links"] = image_links
-                scraped_equipment["categories"] = categories
-                scraped_equipment["description"] = description
-        return scraped_equipment
+        return ScrapedEquipment(
+            name=name,
+            brands=["eleiko"],
+            image_links=image_links,
+            categories=categories,
+            description=description,
+            mpn=None,
+            skus=None,
+        )

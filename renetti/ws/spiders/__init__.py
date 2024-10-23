@@ -2,6 +2,7 @@
 from renetti.ws.spiders.sites.atlantis_strength import AtlantisStrengthSpider
 from renetti.ws.spiders.sites.eleiko import EleikoSpider
 from renetti.ws.spiders.sites.gym_equipment import GymEquipmentSpider
+from renetti.ws.spiders.sites.hoist_fitness import HoistFitnessSpider
 from renetti.ws.spiders.sites.life_fitness import LifeFitnessSpider
 from renetti.ws.spiders.sites.matrix_fitness import MatrixGymSpider
 from renetti.ws.spiders.sites.rogue_fitness import RogueFitnessSpider

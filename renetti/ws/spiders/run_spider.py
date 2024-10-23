@@ -1,5 +1,5 @@
 import asyncio
 
-from renetti.ws.spiders import EleikoSpider
+from renetti.ws.spiders import HoistFitnessSpider
 
-asyncio.run(EleikoSpider(request_batch_limit=5).crawl_website())
+asyncio.run(HoistFitnessSpider(request_batch_limit=20).crawl_website())

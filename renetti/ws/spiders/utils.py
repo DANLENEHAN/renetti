@@ -13,9 +13,19 @@ def parse_product_json_ld_from_page(soup: BeautifulSoup) -> ScrapedEquipment:
     # Find all script elements with type "application/ld+json"
     ld_script_elements = soup.find_all("script", type="application/ld+json")
 
-    for elm in ld_script_elements:
+    tried_normal_decode = False
+    tried_remove_new_line_decode = False
+    count = 0
+    while count < len(ld_script_elements):
+        elm = ld_script_elements[count]
+        if not tried_normal_decode:
+            json_text = elm.text
+            tried_normal_decode = True
+        else:
+            json_text = elm.text.replace("\n", "")
+            tried_remove_new_line_decode = True
         try:
-            json_ld = json.loads(elm.text)
+            json_ld = json.loads(json_text)
             if isinstance(json_ld, list):
                 # There shouldn't be more than one product
                 # on a single page, if there is address uniquely
@@ -24,8 +34,12 @@ def parse_product_json_ld_from_page(soup: BeautifulSoup) -> ScrapedEquipment:
             if json_ld.get("@type") == "Product":
                 product_information = json_ld
                 break
+            count += 1
         except json.JSONDecodeError:
-            continue  # Ignore JSON decode errors
+            if tried_normal_decode and tried_remove_new_line_decode:
+                tried_normal_decode = False
+                tried_remove_new_line_decode = False
+                count += 1
 
     if not product_information:
         raise ValueError("No Product Found")

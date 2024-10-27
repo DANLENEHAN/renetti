@@ -72,4 +72,7 @@ class HoistFitnessSpider(Spider):
             scraped_equipment = parse_product_json_ld_from_page(soup=soup)
             categories = [url.split("collections/")[1].split("/")[0]]
             scraped_equipment["categories"] = categories
+            scraped_equipment[
+                "name"
+            ] += f' {soup.find("div", class_="product_card_sku").find("h3").text.strip()}'
         return scraped_equipment

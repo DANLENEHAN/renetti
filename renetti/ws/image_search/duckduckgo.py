@@ -10,3 +10,5 @@ results = DDGS().images(
     license_image=None,
     max_results=100,
 )
+
+print(results)

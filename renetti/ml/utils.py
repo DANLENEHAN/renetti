@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import pyheif
 from PIL import Image, UnidentifiedImageError
@@ -40,21 +40,23 @@ def update_label_mappers(
 
 def process_files(
     file_paths: List[str],
-    label_mapper_one: Dict[str, int],
     label_mapper_two: Dict[str, int],
     label_mapper_three: Dict[str, int],
-):
+    label_mapper_four: Dict[str, int],
+) -> Tuple[list[int], list[int], list[int], list[int]]:
     """Process file paths and generate labels for each category."""
 
     category_one_labels: List[int] = []
     category_two_labels: List[int] = []
     category_three_labels: List[int] = []
-    category_two_count, category_three_count = 0, 0
+    category_four_labels: List[int] = []
+    category_two_count, category_three_count, category_four_count = 0, 0, 0
 
     for file in file_paths:
         category_one_labels.append(0)  # Static for equipment vs. not_equipment
-        category_two = "_".join(file.split("/")[4:5])
-        category_three = "_".join(file.split("/")[4:6])
+        category_two = "_".join(file.split("/")[10:11])
+        category_three = "_".join(file.split("/")[11:12])
+        category_four = "_".join(file.split("/")[12:13])
 
         category_two_count = update_label_mappers(
             category_two, label_mapper_two, category_two_count, category_two_labels
@@ -65,13 +67,20 @@ def process_files(
             category_three_count,
             category_three_labels,
         )
+        category_four_count = update_label_mappers(
+            category_four,
+            label_mapper_four,
+            category_four_count,
+            category_four_labels,
+        )
 
-    return category_one_labels, category_two_labels, category_three_labels
+    return category_one_labels, category_two_labels, category_three_labels, category_four_labels
 
 
 def get_equipment_image_categories():
-    base_image_path = "renetti/files/images"
-    training_path = os.path.join(base_image_path, "training")
+    # This shouldn't be hardcoded; update soon
+    base_image_path = "/Users/dan/Work/dev/projects/renetti/files/model_data"
+    training_path = os.path.join(base_image_path, "equipment")
     testing_path = os.path.join(base_image_path, "testing")
 
     # Collecting file paths
@@ -80,24 +89,30 @@ def get_equipment_image_categories():
 
     # Define mappers
     category_one_label_mapper = {"equipment": 0, "not_equipment": 1}
-    category_two_label_mapper, category_three_label_mapper = {}, {}
+    category_two_label_mapper, category_three_label_mapper, category_four_label_mapper = {}, {}, {}
 
     # Process training and testing data
     (
         category_one_train_labels,
         category_two_train_labels,
         category_three_train_labels,
+        category_four_train_labels,
     ) = process_files(
         training_files,
-        category_one_label_mapper,
         category_two_label_mapper,
         category_three_label_mapper,
+        category_four_label_mapper,
     )
-    category_one_test_labels, category_two_test_labels, category_three_test_labels = process_files(
+    (
+        category_one_test_labels,
+        category_two_test_labels,
+        category_three_test_labels,
+        category_four_test_labels,
+    ) = process_files(
         testing_files,
-        category_one_label_mapper,
         category_two_label_mapper,
         category_three_label_mapper,
+        category_four_label_mapper,
     )
 
     # Reverse the key value pairs of the mappers so allow access to human
@@ -105,6 +120,7 @@ def get_equipment_image_categories():
     category_one_label_mapper = {v: k for k, v in category_one_label_mapper.items()}
     category_two_label_mapper = {v: k for k, v in category_two_label_mapper.items()}
     category_three_label_mapper = {v: k for k, v in category_three_label_mapper.items()}
+    category_four_label_mapper = {v: k for k, v in category_four_label_mapper.items()}
 
     # Create data sets
     category_one_image_data = ImageClassificationDataSet(
@@ -131,11 +147,20 @@ def get_equipment_image_categories():
             category_three_test_labels, testing_files, category_three_label_mapper
         ),
     )
+    category_four_image_data = ImageClassificationDataSet(
+        training_data=ImageClassificationData(
+            category_four_train_labels, training_files, category_four_label_mapper
+        ),
+        testing_data=ImageClassificationData(
+            category_four_test_labels, testing_files, category_four_label_mapper
+        ),
+    )
 
     return EquipmentClassificationData(
         category_one=category_one_image_data,
         category_two=category_two_image_data,
         category_three=category_three_image_data,
+        category_four=category_four_image_data,
     )
 
 

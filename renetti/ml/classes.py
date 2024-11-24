@@ -24,7 +24,9 @@ class EquipmentClassificationData:
         category_one: ImageClassificationDataSet,
         category_two: ImageClassificationDataSet,
         category_three: ImageClassificationDataSet,
+        category_four: ImageClassificationDataSet,
     ):
         self.category_one = category_one
         self.category_two = category_two
         self.category_three = category_three
+        self.category_four = category_four

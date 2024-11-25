@@ -42,8 +42,3 @@ pre-commit autoupdate
 ```bash
 pre-commit run --all-files
 ```
-
-
-, GET_IS_PRIME AS (
-    SELECT CASE WHEN SUM(ISNOTPRIME) > 0 THEN "FALSE" ELSE "TRUE" END AS IS_PRIME FROM CALCULATE_PRIME
-)

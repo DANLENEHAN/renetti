@@ -24,11 +24,15 @@ def list_and_download_s3_files(bucket_name, local_directory):
                     file_key = obj["Key"]
                     local_file_path = os.path.join(local_directory, file_key)
 
+                    # Check if the file already exists
+                    if os.path.exists(local_file_path):
+                        print(f"Skipping {file_key} (already exists).")
+                        continue
+
                     # Ensure subdirectories exist
-                    if "/" in file_key:
-                        subdir = os.path.dirname(local_file_path)
-                        if not os.path.exists(subdir):
-                            os.makedirs(subdir)
+                    subdir = os.path.dirname(local_file_path)
+                    if not os.path.exists(subdir):
+                        os.makedirs(subdir)
 
                     # Download the file
                     print(f"Downloading {file_key}...")
@@ -40,10 +44,7 @@ def list_and_download_s3_files(bucket_name, local_directory):
 
 
 if __name__ == "__main__":
-    # Replace 'your-bucket-name' with the name of your bucket
     bucket_name = "equipment-model-data"
-
-    # Replace 'your-local-directory' with your desired local directory
-    local_directory = "/Users/dan/Work/dev/projects/renetti/files/model_data"
+    local_directory = "renetti/files/model_data/images/training"
 
     list_and_download_s3_files(bucket_name, local_directory)

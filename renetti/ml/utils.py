@@ -53,10 +53,12 @@ def process_files(
     category_two_count, category_three_count, category_four_count = 0, 0, 0
 
     for file in file_paths:
-        category_one_labels.append(0)  # Static for equipment vs. not_equipment
-        category_two = "_".join(file.split("/")[10:11])
-        category_three = "_".join(file.split("/")[11:12])
-        category_four = "_".join(file.split("/")[12:13])
+        category_one_labels.append(
+            0
+        )  # I'm only ever training on equipment here will need to add non equipment data
+        category_two = "_".join(file.split("/")[6:7])
+        category_three = "_".join(file.split("/")[6:8])
+        category_four = "_".join(file.split("/")[6:9])
 
         category_two_count = update_label_mappers(
             category_two, label_mapper_two, category_two_count, category_two_labels
@@ -78,14 +80,18 @@ def process_files(
 
 
 def get_equipment_image_categories():
-    # This shouldn't be hardcoded; update soon
-    base_image_path = "/Users/dan/Work/dev/projects/renetti/files/model_data"
-    training_path = os.path.join(base_image_path, "equipment")
-    testing_path = os.path.join(base_image_path, "testing")
+    base_image_path = "renetti/files/model_data/images"
+    training_path = os.path.join(base_image_path, "training")
+    testing_path = os.path.join(
+        base_image_path, "fake"
+    )  # Not adding testing images right now as the labels will training images
+    # In reality the should be the same
 
     # Collecting file paths
     training_files = get_file_paths(training_path)
     testing_files = get_file_paths(testing_path)
+    training_files = [p for p in training_files if not p.endswith("json")]
+    testing_files = [p for p in training_files if not p.endswith("json")]
 
     # Define mappers
     category_one_label_mapper = {"equipment": 0, "not_equipment": 1}

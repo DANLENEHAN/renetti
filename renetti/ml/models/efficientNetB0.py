@@ -5,7 +5,8 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.model_selection import StratifiedKFold
 from torch.utils.data import DataLoader, Dataset
-from torchvision import models, transforms
+from torchvision import transforms
+from torchvision.models import efficientnet_b0
 
 from renetti.ml.utils import open_image
 
@@ -30,7 +31,7 @@ class CustomDataset(Dataset):
         return image, label
 
 
-class Resnet50Model:
+class EfficientNetB0Model:
     def __init__(
         self,
         image_paths: List[str],
@@ -48,20 +49,24 @@ class Resnet50Model:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def _create_model(self):
-        # Initialize a new ResNet50 model for each fold to retain pretrained weights
-        model = models.resnet50(pretrained=True)
-        model.fc = nn.Sequential(nn.Dropout(0.5), nn.Linear(model.fc.in_features, self.num_classes))
+        # Initialize an EfficientNet-B0 model for each fold
+        model = efficientnet_b0(pretrained=True)
+        # Replace the classifier with a new one for our num_classes
+        in_features = model.classifier[1].in_features
+        model.classifier[1] = nn.Linear(in_features, self.num_classes)
         return model.to(self.device)
 
     def train(self):
         num_classes = self.num_classes
         print(f"Number of classes: {num_classes}")
 
-        # Define transforms (simplified)
+        # Slightly more complex augmentations
         train_transform = transforms.Compose(
             [
                 transforms.RandomResizedCrop((224, 224), scale=(0.8, 1.0)),
                 transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation(degrees=10),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ]
@@ -99,24 +104,24 @@ class Resnet50Model:
             # Create a fresh model for this fold
             self.model = self._create_model()
 
-            # Freeze all layers except the final fully connected layer initially
+            # Freeze all layers except the final classifier initially
             for param in self.model.parameters():
                 param.requires_grad = False
-            for param in self.model.fc.parameters():
+            for param in self.model.classifier[1].parameters():
                 param.requires_grad = True
 
-            # Optimizer and Scheduler
-            # Start with a slightly higher LR for FC layer training
-            optimizer = optim.AdamW(
+            # Optimizer and Scheduler: Start with SGD for final layer only
+            optimizer = optim.SGD(
                 filter(lambda p: p.requires_grad, self.model.parameters()),
-                lr=1e-4,  # a bit higher since only FC is trained initially
-                weight_decay=1e-3,
+                lr=0.01,
+                momentum=0.9,
+                weight_decay=1e-4,
             )
-            # Use a cosine annealing LR scheduler for smoother LR decay
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=20)
+            # Cosine annealing LR
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=40)
 
-            # Label smoothing helps regularization
-            criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+            # Reduced label smoothing slightly
+            criterion = nn.CrossEntropyLoss(label_smoothing=0.05)
 
             device = self.device
             print(f"Using device: {device}")
@@ -124,6 +129,10 @@ class Resnet50Model:
             early_stopping_tolerance = 5
             early_stopping_count = 0
             total_epochs = 10  # Increase epochs to allow more training
+
+            # Gradual Unfreezing Schedule:
+            # - After epoch 3: Unfreeze layer4
+            # - After epoch 10: Unfreeze layer3
 
             for epoch in range(total_epochs):
                 self.model.train()
@@ -146,19 +155,33 @@ class Resnet50Model:
                     total_train += labels.size(0)
                     correct_train += (predicted == labels).sum().item()
 
-                # After a few epochs, unfreeze deeper layers (e.g., last block) to fine-tune more
-                # This is a simple heuristic - after 5 epochs, unfreeze layer4
-                if epoch == 5:
+                # Unfreeze layer4 at epoch 3
+                if epoch == 3:
                     for name, param in self.model.named_parameters():
-                        if "layer4" in name or "fc" in name:
+                        # Unfreeze layer4 and classifier
+                        if "blocks.6" in name or "classifier" in name:
                             param.requires_grad = True
-                    # Reinitialize optimizer with more parameters
-                    optimizer = optim.AdamW(
+                    optimizer = optim.SGD(
                         filter(lambda p: p.requires_grad, self.model.parameters()),
-                        lr=1e-5,  # reduce LR now that more layers are unfrozen
-                        weight_decay=1e-3,
+                        lr=0.001,
+                        momentum=0.9,
+                        weight_decay=1e-4,
                     )
-                    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=20)
+                    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=40)
+
+                # Unfreeze layer3 at epoch 10 for deeper fine-tuning
+                if epoch == 10:
+                    for name, param in self.model.named_parameters():
+                        # Unfreeze layer3 as well
+                        if "blocks.5" in name or "blocks.6" in name or "classifier" in name:
+                            param.requires_grad = True
+                    optimizer = optim.SGD(
+                        filter(lambda p: p.requires_grad, self.model.parameters()),
+                        lr=0.0005,
+                        momentum=0.9,
+                        weight_decay=1e-4,
+                    )
+                    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=40)
 
                 # Validation phase
                 self.model.eval()
@@ -216,8 +239,9 @@ class Resnet50Model:
 
     def predict(self, image_path):
         # Load the model weights
-        model = models.resnet50(pretrained=False)
-        model.fc = nn.Sequential(nn.Dropout(0.5), nn.Linear(model.fc.in_features, self.num_classes))
+        model = efficientnet_b0(pretrained=False)
+        in_features = model.classifier[1].in_features
+        model.classifier[1] = nn.Linear(in_features, self.num_classes)
         model.load_state_dict(torch.load(self.saved_weights_path, map_location=self.device))
         model = model.to(self.device)
         model.eval()
@@ -231,7 +255,6 @@ class Resnet50Model:
             ]
         )
 
-        # Load and preprocess the image
         image = open_image(image_path)
         image = transform(image)
         image = image.unsqueeze(0)  # Add batch dimension

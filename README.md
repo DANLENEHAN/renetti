@@ -1,5 +1,5 @@
 # renetti
-Machine Learning and Data Pipelining Service
+Equipment Image Recognition Modelling - Machine Learning and Data Pipelining Service
 
 # Setup
 ## Poetry
